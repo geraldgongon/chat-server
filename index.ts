@@ -6,6 +6,7 @@ interface Message {
   id: string;
   text: string;
   timestamp: number;
+  username: string;
 }
 
 const app = express();
@@ -26,6 +27,7 @@ const io = new Server(server, {
 // const __dirname = dirname(fileURLToPath(import.meta.url)); 
 
 const PORT = process.env.PORT || 3001;
+const socketUserMap = new Map<string, string>();
 
 // serve a simple message when the user navigates to the root url
 app.get('/', (req, res) => {
@@ -36,22 +38,28 @@ app.get('/', (req, res) => {
 
 // listen for a connection event and emit a message to all clients when a user connects
 io.on('connection', (socket) => {
-  console.log('a user connected');
+  console.log('a user connected', JSON.stringify(socket.id));
+  socketUserMap.set(socket.id, "");
+
   
   socket.on('disconnect', () => {
-    console.log('user disconnected');
+    console.log('user disconnected', socket.id);
     
     // send a message to all clients when a user disconnects
     const msg: Message = {
       id: Date.now().toString(),
       text: "user disconnected",
       timestamp: Date.now(),
+      username: socketUserMap.get(socket.id) || "system"
     }
     io.emit('chat message', msg);
   }); 
 
   // listen for chat message event and emit it to all clients
   socket.on('chat message', (msg) => {
+    if (socketUserMap.get(socket.id) === "") {
+      socketUserMap.set(socket.id, msg.username);
+    }
     io.emit('chat message', msg);
   });
 });
